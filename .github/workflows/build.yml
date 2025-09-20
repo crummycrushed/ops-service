@@ -1,0 +1,34 @@
+name: Build & Deploy LLM Service
+on:
+  push:
+    branches: ["main"]
+
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+    
+
+      - name: Docker login
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD}}" | docker login -us ${{secrets.DOCKERHUB_USERNAME}} --password-stdin
+
+      - name: Build and Push
+        run: |
+          IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/ops-service:${{ github.sha }}
+          docker build -t $IMAGE .
+          docker push $IMAGE
+          echo "IMAGE=$IMAGE" >> $GITHUB_ENV
+
+      - name: Update Manifests Repo
+        run: |
+          git clone https://github.com/crummycrushed/ops-manifests.git
+          cd ops-manifests
+          sed -i "s|image: .*|image: $IMAGE|" llm-service-rollout.yaml
+          git config user.name "CI Bot"
+          git config user.email "ci@bot.com"
+          git commit -am "Update image to $IMAGE"
+          git push https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/crummycrushed/ops-manifests.git
+
+
