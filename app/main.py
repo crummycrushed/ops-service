@@ -138,7 +138,7 @@ async def generate_text(payload: dict):
             result = response.json()
             logger.info(f"result: {result}")
         except ValueError as ex:
-            logger.error(f"Value error Occured : {str(ex)}")
+            logger.error(f"Value error occured : {str(ex)}")
 
         generated_text = None
         if "response" in result and isinstance(result["response"], str):
