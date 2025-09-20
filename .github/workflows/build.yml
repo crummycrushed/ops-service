@@ -1,20 +1,18 @@
 name: Build & Deploy LLM Service
 on:
   push:
-    branches: ["main"]
-
+    branches: [ "main" ]
 
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-    
 
       - name: Docker login
-        run: echo "${{ secrets.DOCKERHUB_PASSWORD}}" | docker login -us ${{secrets.DOCKERHUB_USERNAME}} --password-stdin
+        run: echo "${{ secrets.DOCKERHUB_PASSWORD }}" | docker login -u ${{ secrets.DOCKERHUB_USERNAME }} --password-stdin
 
-      - name: Build and Push
+      - name: Build & Push
         run: |
           IMAGE=${{ secrets.DOCKERHUB_USERNAME }}/ops-service:${{ github.sha }}
           docker build -t $IMAGE .
@@ -30,5 +28,3 @@ jobs:
           git config user.email "ci@bot.com"
           git commit -am "Update image to $IMAGE"
           git push https://x-access-token:${{ secrets.REPO_TOKEN }}@github.com/crummycrushed/ops-manifests.git
-
-
