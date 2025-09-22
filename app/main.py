@@ -3,12 +3,14 @@ import logging
 import re
 from typing import Dict
 from fastapi import FastAPI, HTTPException
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import PlainTextResponse
 from prometheus_client import generate_latest
 import requests
 import time
 import tiktoken
 import os
+import jwt
 
 from app.governance import enforce_rate_limit
 from app.metrics import (
@@ -34,12 +36,42 @@ MODEL_NAME = "tinyllama"
 BACKEND = "ollama"
 
 
+JWT_SECRET = os.getenv("JWT_SECRET")
+JWT_ALGORITHM = os.getenv("JWT_ALGORITHM", "HS256")
+JWT_EXPIRY_SECONDS = int(os.getenv("EXP", str(3600 * 4)))
+
 try:
     tokenizer = tiktoken.get_encoding("cl100k_base")
 except Exception as e:
     logger.warning(f"Could not load tokenizer: {e}")
     tokenizer = None
 
+security = HTTPBearer()
+
+def create_jwt_for_user(username: str, role: str = "user") -> str:
+    now = int(time.time())
+    payload = {
+        "sub": username, # subject, idetiied the user
+        "role": role,  # what permission use has
+        "iat": now, # current timestamp when this token was issue s
+        "exp": now + JWT_EXPIRY_SECONDS
+    }
+
+    token = jwt.encode(payload, JWT_SECRET, JWT_ALGORITHM)
+
+    #pyjwt return str in v2+ , while it return bytes
+    if isinstance(token, bytes):
+        token = token.decode()
+    return token
+
+def decode_jwt_token(token: str) -> Dict:
+    try:
+        payload = jwt.decode(token, JWT_SECRET, JWT_ALGORITHM)
+        return payload
+    except jwt.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Token expired")
+    except jwt.INnvalidTokenError:
+        raise HTTPException(status_code=401, detail="Invalid token")
 
 MODEL_INFO.info(
     {
