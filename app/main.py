@@ -12,7 +12,7 @@ import os
 
 from app.governance import enforce_rate_limit
 from app.metrics import (
-    CONTENT_FILTER, GUARDRAIL_VIOLATION, SAFETY_VIOLATION, record_requst, ACTIVE_REQUESTS, MODEL_INFO, TOKENS_PER_SECOND
+    CONTENT_FILTER, COST_BLOCKED_REQUEST, GUARDRAIL_VIOLATION, SAFETY_VIOLATION, record_requst, ACTIVE_REQUESTS, MODEL_INFO, TOKENS_PER_SECOND
 )
 
 
@@ -132,6 +132,55 @@ class Guardrails:
 
 guardrails = Guardrails()
 
+COST_PER_INPUT_TOKEN = 0.1
+COST_PER_OUTPUT_TOKEN = 0.4
+
+class CostController:
+    
+    def __init__(self):
+        self.daily_limits = {
+            "alice" : 10.0,
+            "bob" : 1.0,
+            "premium": 100.0,
+            "default": 0.5
+        }
+
+        self.daily_spending: Dict[str, float] = {}
+        self.last_rest = time.time()
+
+    def reset_daily_if_needed(self):
+        current_time = time.time()
+        if current_time - self.last_rest > 86400:
+            self.daily_spending = {}
+            self.last_rest = current_time
+
+    def calculate_cost(self, input_tokens: int, output_token: int) -> float:
+        input_cost = input_tokens * COST_PER_INPUT_TOKEN
+        output_cost = output_token * COST_PER_OUTPUT_TOKEN
+        return input_cost + output_cost
+    
+    
+    def check_cost_limit(self, user: str, estimated_cost: float) -> Dict:
+        self.reset_daily_if_needed()
+
+        current_spending = self.daily_spending.get(user, 0.0)
+        daily_limit = self.daily_limits.get(user, self.daily_limits["default"])
+
+        if current_spending + estimated_cost > daily_limit:
+            return {
+                "allowed": False,
+                "reason": f"Daily limit exceeded ${current_spending + estimated_cost:.4f} > ${daily_limit}",
+                "current_pending": current_spending,
+                "daily_limit": daily_limit
+            }
+        return{"allowed": True}
+    
+    def record_spending(self, user: str, cost: float):
+        self.reset_daily_if_needed()
+        self.daily_spending[user] = self.daily_spending.get(user, 0.0) + cost
+
+costcontroller = CostController()
+
 def _count_tokens(text: str) -> int:
     if not text or not tokenizer:
         return len(text.split())
@@ -216,6 +265,18 @@ async def generate_text(payload: dict):
     # Enforce governance
     enforce_rate_limit(user)
 
+    input_tokesn = _count_tokens(prompt)
+    estimated_output_tokens = min(max_tokens, 100)
+    estimated_cost = costcontroller.calculate_cost(input_tokens, estimated_output_tokens)
+
+    cost_check = costcontroller.check_cost_limit(user, estimated_cost)
+    if not cost_check["allowed"]:
+        COST_BLOCKED_REQUEST.labels(user=user).inc()
+        raise HTTPException(
+            status_code=429,
+            detail=f"Cost limit exceeded: {cost_check['reason']}"
+        )
+
     ACTIVE_REQUESTS.inc()
     start_time = time.time()
 
@@ -260,7 +321,7 @@ async def generate_text(payload: dict):
                 detail="NO valid response"
             )
         
-        # step XX:  Output safety check
+        # step 5:  Output safety check
         output_safety = content_filter.check_content_safety(generated_text)
         if not output_safety["safe"]:
             SAFETY_VIOLATION.labels(
@@ -277,7 +338,11 @@ async def generate_text(payload: dict):
         input_tokens = _count_tokens(prompt)
         output_tokens = _count_tokens(generated_text)
 
+        actual_cost = costcontroller.calculate_cost(input_tokens=input_tokens, output_token=output_tokens)
+
         total_tokens = input_tokens + output_tokens
+
+        costcontroller.record_spending(user, actual_cost)
 
         record_requst(
             backend=BACKEND,

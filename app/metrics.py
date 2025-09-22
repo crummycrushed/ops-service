@@ -86,6 +86,13 @@ PII_DETECTIONS = Counter(
     ["pii_type", "location"]
 )
 
+
+COST_BLOCKED_REQUEST = Counter(
+    "llm_cost_blocked_requests_total",
+    "Request blocked due to cost limits",
+    ["user"]
+)
+
 # Helper func
 def record_requst(backend, user, model, status, latency, tokens_in=0, tokens_out=0):
     REQUEST_COUNT.labels(
