@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+from typing import Dict
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import PlainTextResponse
 from prometheus_client import generate_latest
@@ -10,7 +12,7 @@ import os
 
 from app.governance import enforce_rate_limit
 from app.metrics import (
-    record_requst, ACTIVE_REQUESTS, MODEL_INFO, TOKENS_PER_SECOND
+    CONTENT_FILTER, GUARDRAIL_VIOLATION, SAFETY_VIOLATION, record_requst, ACTIVE_REQUESTS, MODEL_INFO, TOKENS_PER_SECOND
 )
 
 
@@ -47,6 +49,88 @@ MODEL_INFO.info(
     }
 )
 
+
+# Safety and control filter
+
+class ContentFilter:
+
+    def __init__(self):
+        self.banned_keywords = [
+            'hack', 'virus', 'malware', 'phising', 'exploit',
+            'bomb', 'weapon', 'drug', 'violence'
+        ]
+
+
+        self.pii_patterns = {
+            'ssn': re.compile(r'\b^\d{3}-\d{2}-\d{4}$\b'),
+            'credit_card': re.compile(r'^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11})$'),
+            'email': re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+        }
+
+    def check_content_safety(self, text: str) -> Dict:
+        violations = []
+        severity = "none"
+
+        text_lower = text.lower()
+
+
+            #checked banned keywords
+        for keyword in self.banned_keywords:
+            if keyword in text_lower:
+                violations.append(f"banned_keywords: {keyword}")
+                severity = "high"
+
+        # check for pii
+        for pii_type, pattern in self.pii_patterns.items():
+            if pattern.search(text):
+                violations.append(f"pii_detected: {pii_type}")
+                if severity == "none":
+                    severity = "medium"
+
+        return {
+            "safe": len(violations) == 0,
+            "violations": violations,
+            "severity": severity
+        }
+
+
+    def sanitize_output(self, text: str) -> str:
+        text = re.sub(self.pii_patterns['email'], 'EMAIL ********', text)
+        return text
+
+
+content_filter = ContentFilter()
+
+
+
+class Guardrails:
+    def __init__(self):
+        self.max_prompt_length = 400
+        self.max_output_tokens = 300
+
+
+    def validate_Request(self, payload: Dict, user: str) -> Dict:
+        violations = []
+        prompt = payload.get("prompt", "")
+        max_tokens = payload.get("max_tokens", 50)
+
+        if len(prompt) > self.max_prompt_length:
+            violations.append(f"prompt too longs : {len(prompt) > {self.max_prompt_length}}")
+
+
+        if max_tokens > self.max_output_tokens:
+            violations.append(f"token_limit_exceeded: {max_tokens > {self.max_output_tokens}}")
+
+        if user == "restricted_user" and max_tokens > 100:
+            violations.append(f"user_token_limit: restricted_user max 100 tokens")
+
+        return {
+            "valid": len(violations) == 0,
+            "violations": violations
+        }
+
+
+guardrails = Guardrails()
 
 def _count_tokens(text: str) -> int:
     if not text or not tokenizer:
@@ -106,6 +190,29 @@ async def generate_text(payload: dict):
     if not prompt:
         raise HTTPException(status_code=400, detail="Prompt not available")
     
+    #Step 1: Content safety check
+    safety_result = content_filter.check_content_safety(prompt)
+    if not safety_result["safe"]:
+        SAFETY_VIOLATION.labels(
+            violations_type = "content_filter",
+            severity = safety_result["severity"]
+        ).inc()
+
+        CONTENT_FILTER.labels(user=user, filter_type="safety").inc()
+
+        raise HTTPException(
+            status_code=400,
+            detail= f"content safety violations: {', '.join(safety_result['violations'])}"
+        )
+    
+    # step 2: business guarrails:
+    guardrails_result = guardrails.validate_Request(payload=payload, user=user)
+    if not guardrails_result["valid"]:
+        GUARDRAIL_VIOLATION.labels(user=user, violation_type = "business_rule").inc()
+        raise HTTPException(
+            status_code=400,
+            detail=f"Guardrail violations: {', '.join(guardrails_result['violations'])}"
+        )
     # Enforce governance
     enforce_rate_limit(user)
 
@@ -153,6 +260,16 @@ async def generate_text(payload: dict):
                 detail="NO valid response"
             )
         
+        # step XX:  Output safety check
+        output_safety = content_filter.check_content_safety(generated_text)
+        if not output_safety["safe"]:
+            SAFETY_VIOLATION.labels(
+                violiation_type = "output_filter",
+                severity=output_safety["severity"]
+            ).inc()
+            generate_text = "[CONTENT FILTERED - SAFETY VIOLATION]"
+        else:
+            generate_text = content_filter.sanitize_output(generate_text)
         end_time = time.time()
         latency = end_time - start_time
 

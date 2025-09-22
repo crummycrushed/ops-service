@@ -60,6 +60,32 @@ USER_REQUEST_COUNT = Counter(
 )
 
 
+# SAFETY metrics
+
+SAFETY_VIOLATION = Counter(
+    "llm_safety_violation_total",
+    "Content vioalotion",
+    ["violation_type", "severity"]
+)
+
+CONTENT_FILTER = Counter(
+    "llm_content_filterd_total",
+    "Requst blocked by content filters",
+    ["user", "failter_type"]
+)
+
+GUARDRAIL_VIOLATION = Counter(
+    "llm_guardrail_violations_total",
+    "Business guarrail violation",
+    ["user", "violation_type"]
+)
+
+PII_DETECTIONS = Counter(
+    "llm_pii_detections_total",
+    "PII detected and siznitzed",
+    ["pii_type", "location"]
+)
+
 # Helper func
 def record_requst(backend, user, model, status, latency, tokens_in=0, tokens_out=0):
     REQUEST_COUNT.labels(
