@@ -26,7 +26,7 @@ app = FastAPI(
     version="2.0.0"
 )
 
-OLLAMA_HOST = "ollama"
+OLLAMA_HOST = "localhost"
 OLLAMA_PORT = "11434"
 
 OLLAMA_URL = f"http://{OLLAMA_HOST}:{OLLAMA_PORT}/api/generate"
@@ -59,12 +59,16 @@ class ContentFilter:
             'hack', 'virus', 'malware', 'phising', 'exploit',
             'bomb', 'weapon', 'drug', 'violence'
         ]
-
+        
+        self.injection_patterns = [
+            re.compile(r"ignore\s+(all|previous)\s+intructions", re.I),
+            re.compile(r"you\s+are\s+now", re.I)
+        ]
 
         self.pii_patterns = {
             'ssn': re.compile(r'\b^\d{3}-\d{2}-\d{4}$\b'),
             'credit_card': re.compile(r'^(?:4[0-9]{12}(?:[0-9]{3})?|5[1-5][0-9]{14}|3[47][0-9]{13}|3(?:0[0-5]|[68][0-9])[0-9]{11}|6(?:011|5[0-9]{2})[0-9]{12}|(?:2131|1800|35\d{3})\d{11})$'),
-            'email': re.compile(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$')
+            'email': re.compile(r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b')
         }
 
     def check_content_safety(self, text: str) -> Dict:
@@ -80,6 +84,9 @@ class ContentFilter:
                 violations.append(f"banned_keywords: {keyword}")
                 severity = "high"
 
+        for pattern in self.injection_patterns:
+            if pattern.search(text):
+                violations.append("prompt_injection_detected")
         # check for pii
         for pii_type, pattern in self.pii_patterns.items():
             if pattern.search(text):
@@ -119,7 +126,7 @@ class Guardrails:
 
 
         if max_tokens > self.max_output_tokens:
-            violations.append(f"token_limit_exceeded: {max_tokens > {self.max_output_tokens}}")
+            violations.append(f"token_limit_exceeded: {int(max_tokens)} > {self.max_output_tokens}")
 
         if user == "restricted_user" and max_tokens > 100:
             violations.append(f"user_token_limit: restricted_user max 100 tokens")
@@ -132,15 +139,15 @@ class Guardrails:
 
 guardrails = Guardrails()
 
-COST_PER_INPUT_TOKEN = 0.1
-COST_PER_OUTPUT_TOKEN = 0.4
+COST_PER_INPUT_TOKEN = 0.001
+COST_PER_OUTPUT_TOKEN = 0.004
 
 class CostController:
     
     def __init__(self):
         self.daily_limits = {
             "alice" : 10.0,
-            "bob" : 1.0,
+            "bob" : 100.0,
             "premium": 100.0,
             "default": 0.5
         }
@@ -191,7 +198,7 @@ def _count_tokens(text: str) -> int:
 async def startup_event():
     logger.info("Starting LLMOps Ollama tiny llm service")
     try:
-        response = requests.get("http://ollama:11434/api/version", timeout=5)
+        response = requests.get("http://localhost:11434/api/version", timeout=5)
         logger.info(f"Ollama heaklth check: {response.status_code}")
     except Exception as e:
         logger.error(f"Could not connect to Ollama: {e}")
@@ -206,7 +213,7 @@ def root():
 @app.get("/health")
 def health():
     try:
-        response = requests.get("http://ollama:11434/api/version", timeout=5)
+        response = requests.get("http://localhost:11434/api/version", timeout=5)
         healthy = response.status_code == 200
     except:
         healthy = False
@@ -243,7 +250,7 @@ async def generate_text(payload: dict):
     safety_result = content_filter.check_content_safety(prompt)
     if not safety_result["safe"]:
         SAFETY_VIOLATION.labels(
-            violations_type = "content_filter",
+            violation_type = "content_filter",
             severity = safety_result["severity"]
         ).inc()
 
@@ -265,7 +272,7 @@ async def generate_text(payload: dict):
     # Enforce governance
     enforce_rate_limit(user)
 
-    input_tokesn = _count_tokens(prompt)
+    input_tokens = _count_tokens(prompt)
     estimated_output_tokens = min(max_tokens, 100)
     estimated_cost = costcontroller.calculate_cost(input_tokens, estimated_output_tokens)
 
@@ -330,7 +337,7 @@ async def generate_text(payload: dict):
             ).inc()
             generate_text = "[CONTENT FILTERED - SAFETY VIOLATION]"
         else:
-            generate_text = content_filter.sanitize_output(generate_text)
+            generate_text = content_filter.sanitize_output(generated_text)
         end_time = time.time()
         latency = end_time - start_time
 

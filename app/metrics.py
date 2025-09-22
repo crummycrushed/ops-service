@@ -71,7 +71,7 @@ SAFETY_VIOLATION = Counter(
 CONTENT_FILTER = Counter(
     "llm_content_filterd_total",
     "Requst blocked by content filters",
-    ["user", "failter_type"]
+    ["user", "filter_type"]
 )
 
 GUARDRAIL_VIOLATION = Counter(
