@@ -121,7 +121,7 @@ async def generate_text(payload: dict):
             "stream": False
         }
 
-        logger.info(f"Processing request for user {user} --> Ollama : {OLLAMA_URL}")
+        logger.info(f"Processing Request for User {user} --> Ollama : {OLLAMA_URL}")
 
         response = requests.post(
             OLLAMA_URL,
