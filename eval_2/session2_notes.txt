@@ -1,0 +1,46 @@
+1. Seeing RAGAS in action : python based evaluation frameworks
+2. Create a dataset
+3. Interface to talk to ollama [cmdline]
+4. Inject that dataset to generate response from ollama 
+5. Run evaluation using ragas interface to predice bleu and rogue score
+6. Save the result into a csv
+7. Add interface on gpt
+
+
+SingleTurnSample :
+   1 - 1 mapping. ( 1model response to 1 prmplt)
+
+   sample = SingleTurnSample(
+    respnse = "The eifferl tower is in India"
+    referece = "The eiffel towen is in paris"
+   )
+MultiTurnSample:
+    Represent a conversation with multiple turns 
+
+    sample = MultiTurnSample(
+        turn=[
+
+            {
+                "user_input": "Where is the eiffel tower",
+                "response": "It is in India",
+                "reference" "It is in Paris"
+
+            },
+            {
+                "user_input": "When was it built?",
+                "response": "In 1990",
+                "reference" "IN 1889"
+            }
+        ]
+    )
+
+
+
+    EvaluationDataset : Represent a collection of sample 
+
+
+
+    ds = Dataser.from_dict({
+           respnse = "The eifferl tower is in India"
+    referece = "The eiffel towen is in paris"
+    })

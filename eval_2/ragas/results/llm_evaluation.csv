@@ -1,0 +1,33 @@
+question,context,tiny_answer,tiny_latency,tiny_error,gpt_answer,gpt_latency,gpt_error,gpt_ragas_evaluation_starus,tiny_ragas_bleu_score,tiny_ragas_rouge_score(mode=fmeasure)
+What is photosynthesis and why is it important?,Photsyntesis is the process by which plan convert light energy into chemical energy...,"Photosynthesis is a process in which plants, algae, and some bacteria can convert light energy (photons) into chemical energy (glucose). Photosynthesis plays a crucial role in the Earth's ecosystem as it helps to sustain life on the planet through the production of oxygen.
+
+In photosynthesis, chlorophyll molecules absorb blue light and convert it into electrons, which are then used to generate ATP (adenosine triphosphate), a key molecule in the cell's energy cycle. This process is known as photoinhibition, where excess photons cause a reduction in the amount of electrons produced by photosynthesis. However, the reduced amount of electrons allowed to enter into the cells can trigger a cascade reaction that causes ATP synthesis.
+
+This energy production is essential for many ecosystems, especially those that rely on photosynthesis for their survival. Photosynthesis is also vital for plants in areas with minimal sunlight or low light intensity since it allows them to use available resources more efficiently, such as water and nutrients, and store them for future use. Overall, photosynthesis provides the Earth with a sustainable source of energy that is essential for life on our planet.",2.788907051086426,,,2.7119412422180176,,no data,0.036040836463680816,0.054466665534862395
+How does machine learning work?,machine learning is a subset of AI enabling computers to learn from data...,"Machine learning works by finding patterns and relationships in large datasets using algorithms. This process involves collecting, cleaning, and preprocessing the data, then training a machine learning model on it to predict or make decisions based on the learned patterns and relationships.
+
+The key components of machine learning are:
+
+1. Data preprocessing: Cleaning and removing any irrelevant or redundant data, ensuring that only relevant data is used in the analysis.
+
+2. Feature extraction: Generating features or attributes from the data that capture the essential characteristics of each record.
+
+3. Machine learning algorithms: These algorithms are designed to learn from the data by finding patterns and relationships among the features.
+
+4. Model evaluation: Testing the model's accuracy, precision, recall, and other metrics to evaluate its performance on new data sets.
+
+5. Adaptation: Continuously improving the model based on learning from new data and adjusting its parameters as needed.
+
+By following these steps, machine learning can help solve complex problems in a variety of domains, including healthcare, finance, social media, and marketing, among others.",2.0163919925689697,,,2.308241844177246,,no data,0.036040836463680816,0.054466665534862395
+What causes climate change?,Climate change refers to long term shifts in global temperature...,"The question ""What causes climate change?"" is ambiguous and cannot be answered directly. There are several factors that contribute to climate change, including:
+
+1. Greenhouse gas emissions: The burning of fossil fuels and deforestation increase the amount of greenhouse gases in the atmosphere, trapping heat and causing warming temperatures.
+
+2. Nature's response: Climate change has led to changes in natural systems such as ocean currents, atmospheric circulation patterns, and vegetation patterns that impact weather patterns and ecosystems around the world.
+
+3. Human activities: Human activity, including burning fossil fuels, deforestation, and human-induced emissions of greenhouse gases (such as carbon dioxide) into the atmosphere are significant contributors to climate change.
+
+4. Industrial processes: Pollution from factories, power plants, and other industrial activities releases pollutants that contribute to atmospheric pollution, which in turn affects global temperatures.
+
+5. Agricultural practices: Pesticides and fertilizers use up resources like soil and water, leading to degradation of soil health and nutrient deficiencies. Climate change also causes changes in rainfall patterns resulting in more extreme weather events.",2.3254048824310303,,,2.29130482673645,,no data,0.036040836463680816,0.054466665534862395
+What is blokchain technology?,Blokchain is a distrubuted ledger techbology with cryptographic links...,"Blokchain is a type of distributed ledger technology (DLT) that enables secure, decentralized transactions by using cryptographic links. Cryptography in DLTs creates a public and private ledger for each transaction, which serves as the basis for a permissioned blockchain network. It uses cryptography techniques such as cryptographic hash functions, digital signatures, and hashing algorithms to create secure and tamper-proof transactions. Blokchain's main advantage is that it allows for greater decentralization and transparency than existing DLT systems, as each node on the network is responsible for maintaining its own copy of the ledger.",1.3918650150299072,,,2.4067373275756836,,no data,0.036040836463680816,0.054466665534862395
