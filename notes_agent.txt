@@ -1,0 +1,303 @@
+
+
+Designing Agentic system  :
+
+By the end of this sesion :
+ How to systematically approach agentic system Designing
+ How to break down complex problesm
+ Learn to present technical solution with confidence in interviw
+ by taking real life example
+
+
+
+Build a system that helps SRE/Devops Eng to triage and resolve production
+incident by automatically collecting logs metrics detecting anomlies suggesting root causes
+and redemeption steps and manangi commuciat wile intervenig humans
+
+
+Why this problem matter :
+1. Prod incident cost companies millions
+2. Human SRE are bottlencesk during critical outage
+3. Context switching betwen tools slow the processing
+
+
+
+Requirement gatherings:
+
+Functional requirements:
+1. Ingest Monitoring data( logs, metrics, traces, alerts)
+2. Real time anomaly detection
+3. Multi agent system for e2e rca analysis
+4. Automated remediation suggestions
+5. Communication management integration (slack)
+6. Human approval workflows 
+
+
+Non functioal requirement:
+1. latency : <2 mins for initial rca
+2. Availability : Highlt avaialble 99.9%
+3. Security : Audit tradional
+4. Conistency is importanat
+5. Scale : handle 10k+ alerts
+6. Cost: Optimise llm usage
+
+
+
+
+
+Architecture and Agent Decomposition:
+
+Why are u using agent of agents ?
+1. Single responsibiltiy 
+2. Independent scaling
+3. Fault isolation
+4. Easier testing and maintenance
+
+
+
+
+Ingestion Agent:
+def ingest_events():
+    for source in [prometheus, datadog, cloudwatch]:
+        event = source.poll()   
+        normaize_output = normalise_scema(events)
+        event_bus.publish(normalise_output)
+
+
+
+Route Agents ?
+
+def classify_Alerts(alert):
+    severity = extract_Severity(alert)
+    category = clasiffy_type(alert) ---> # Db, networ, app, infra, hallucination
+     
+    if category in [A, B]:
+      coorelation_Agent.invoke(alert)
+    else:
+       anomaly_Agent.invoke(alert)
+
+
+
+
+    
+Correlation agent :
+    time_window = get_coorecation_window(alert. timestamp)
+    related_metrics = query_metrics(time_window)
+    related_logs = query_logs(time_window, primary_alert.service)
+    deployment_events   = query_deployment(time_window)
+
+    return group_related_incident(alert, realte_metrics, related_logs, deploument_events)
+
+
+
+Deep dive RCA agent
+
+Challenge :  AI system reason about complex production issues ?
+
+class RCAAgent:
+    vector_db = MilvusCLient()
+    llm = OpenAICLient()
+     
+
+    def analyze_incident():
+       simiar_incident = reteruve_similar_incident(incident)
+
+       relevant_runbooks = retrive_runbooks(incident.deployments)
+
+
+       context = build_context(incident, similar_incide, releavnt_runbook)
+
+
+       reasoning = llm.generate(context)
+
+
+       return rankandvalidate(response)
+
+
+{
+    "incident_id: "1"
+    "summary" : "Database connection pool exhausation",
+    "root_cause": "Connection pool limit reached due to long run queries",
+    "symptoms": ["high db latency", "connection timeouts", "503 error"]
+    "resoultion": "Increase pool size and killed long running queries"
+    "embedding" : [],
+    "category": "database"
+    "priority" : "p0"
+}
+
+
+reterive_similar_incident:
+     incident_embedding = self.embed_incident(incident)
+
+
+     simiar_incidents = vector_db.seach(
+        collection = "past_incident",
+        embedding= incident_embedding,
+
+     )
+
+     return simlar
+
+
+    call llm ???
+    promprt template:
+
+You are a site reliability expert analysizn a prodcution incide. 
+
+Incident Context:
+{}
+timestamp
+affected servie: {}
+
+
+Evidenc:
+
+
+relevant logs smaple:
+
+
+recent deployments:
+
+
+SIMILAR INCIDENTS:
+
+
+RELEVANT retrive_runbooks
+
+TASK: Genrate up to 3 root cause hyptheis
+1. provid a confidence score (1, 5)
+2. List speciific evident suporint the reason3
+3. igest immediate remidation steps
+4. Indicate huma approavl i requeired ontno
+
+Output format : Json only : 
+
+{
+}
+
+
+orchestration agen:
+handle_incident :
+
+      1. figure it out the incident is om grom Correlation agent or anomalt agen
+
+      2. enrich incident 
+
+      3. rca_agent = self.agent(rca, details)
+
+      4. if confidene > 0.8 :
+            auto remidiation with human approvael
+         else :
+          escalate to 
+          
+
+
+event.push("channel1")
+remediation_agent.subscrint(channel1)
+
+Human in loop : 
+
+    approval flow:
+
+    def send_approval_request():
+      message {
+
+      }
+      slack_client.post_message(channel=, message)
+      
+
+
+    Scaling , performance an cost optimisation:
+
+
+    1. K8 cluster / EKS , ECS, GKE
+    2. Autoscaling setup    : CLuster autosacle and pod autosace :
+        scaling od container based on number of requests
+                >100 add 1 coitnar
+                >
+
+
+    3. How do u optimise cost ?
+
+       1. semantic caching ?
+       2.  determinsitc rules :
+
+        should_use_llm()
+            if incident_Category in ['disk_space', 'cpu_utilisation'] :
+                return false
+
+     3. batching : wait for 30 mins (group it ). and send it to llm ?
+        
+
+
+Failure Models and reliability : 
+
+1. LLM hallucination : ??
+2. Event storm  : lot of events are coming ? queuesing , 
+3. rate limit : agent failure : retry exponentully with jitter
+
+Monitoring and Evaluation :
+1. emit events :- auditing and monitoring 
+2. Evaluation : we evalaute all the  agent continously 
+
+
+How do you replay a event  ???
+
+incident came. --> rca response was bad and human need to be involved : 
+   reviste the evnt 
+
+
+
+1. Start with context :
+    ask 2-3 clarifying questions
+    state assumption clearly
+    requirement 
+
+2.  High level Architecture 
+    draw on whiteboad
+    exaplin dataflow with arow
+    metion key tech stack
+   
+3. High leve what all agent will do 
+4. Deep dive 
+    pick once agent to ge deep dive 
+    show prompt engineering
+    discuss failure handlin
+5. Scale and tradeoff
+    cost optimisation
+    monitoring
+    Evaluation
+6. QA  
+   prepeare for follow question
+   always have alterntive approach 
+   reason why u are using this kind of arch
+
+
+
+
+Answer framewor:
+1. Identify bottlenecs (llm call, database queries) --> llm router 
+2. Horizontal scaling approac (pod autoscale : KEDA)
+3. Caching strategies ( cache the response)
+4. Load balancing 
+5. Cost implications 
+
+
+
+
+What if LLM givens wroing suggestion ?
+1. Confidence scoring 
+2. Evidence validation
+3. Human review preocess
+4. Implement the challenges
+5. Gradul rollout strteagy. : if it working 
+6. Rollback mechanims
+
+
+
+How do you ensure data privacy ?
+1. Data anonymization
+2. Rollback
+3. Enrcyption as test 
+4. Audit logging
+5. Copliance consideration

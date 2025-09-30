@@ -1,0 +1,271 @@
+
+
+Design a scalable AI education platform where 10M student agents
+negotiate with SME agents, assesment agent and administrative agents to 
+deliver personalized learning 
+
+
+Masai : Evaluation / LLMOps
+
+
+  Tutorial deck --> Admin --> uploaded on to a portal : Evaluation  ---> class 1 --> generate an assignemtn
+
+    class 3 --> Evaluation quiz ---> Given wrong answer 60% of time ??? ---> require some more indepth explainatin
+
+  everyone is in single batch 
+
+  everyone is being taught by 1 instrcutions
+
+  everyone has to come  a 8:30
+
+
+
+  clarifying question :
+  Scale and user:
+  10M users globally (40% indians, 20% americans, 10% europian, 10% others)
+  Peak concurrent user (2M)
+
+
+  Functional scope:
+   Real time content deleivery or async content delivery (Both)
+   Do we need human in loop  ?  if some one is facing too much of dififuclty route to human
+   assesment type ? quiz, Assignment, example
+
+
+Functional Requirement:
+1. personalized learning agent per student (10M)
+2. Subject matter expert agents ( Math, Science, Engine)
+3. Real time assessment and feedback
+4. Multi agent negotiate protocol
+5. Culture and learning style adaptation
+6. Dashboards
+
+
+
+Non functioal:
+1. Scale : 10M students
+2. Evaluation of llm (cost < X$ per month)
+3. latency 
+4. Availability
+5. Compliance :  
+6. Security 
+
+
+
+API Gateway : authN , rate limiting, request routing
+
+Central orchestrator :  
+    1. Routing student request to app agents
+    2. Managing negotiations
+    3. handle agent lifecycle : (Spawn, pause, terminate)
+    4. Enforce some constraints
+
+
+Message Queue :  Async communication betwween agents 
+    student-requests (10k msg/s) [Topics]
+    negotation-events (5k msg/s) [Topics]
+    assesment-task (2k msg/s) [Topics]
+
+
+Agent Pools
+
+Student Learning Agent (10M):
+    store state (track learning)
+    spawn on login, pause after 10m idle, persist state
+
+
+Subject Matter Expert Agents:
+  1. Content creation  (50 per subject)
+  2. 5 dififuclty levels per subject
+  3. 2 versions of content (A/B testing)
+  4. Cache context to improve latency and save db and llm classify_Alerts
+
+assessment agents:
+  1. Auto grading
+  2. Quiz scoring (rubric based)
+  3. Code evalaute
+
+
+Data stores :
+1. SQL database ? Stundet data ( cultural const), metrics [streght, weakness], pace_preferecne,grades
+                Assingment metadata ---> 
+                negotations
+                learning_sessions 
+                subjects
+
+2. Vector DB ? embeddings ? : assignemtn, lessons, videos metadata
+
+3. Redis : content store, semantic cache  (save cost on LLM for similar queries)
+
+
+
+
+
+Deep dive : studen learing agent Architecture
+
+
+Agent state (persistent)
+- Student, name, grade levels
+- learning profile :
+    learning syste : Visual (70%), audio(30%)
+    pace preference : moderate
+    strength : Geometry , weak: algebra
+- Cultural context: India, Hindig
+- Current Goals : [Master Linear equations,....]
+- Session History: Last 30 day
+
+
+Agent Logic:
+1. Request handler 
+    - Receive student questy
+    - parse intent (learn, practiev, ask, review)
+    - Load context from state
+
+2. negotation engine:
+    - Propose learning parameters
+    - Evalue SME counteroffers
+    - Accept or reject
+
+3. Adapataion logic:
+    - Monitor engagement signals
+    - Detect struggle patterns
+    - Update learning profile
+    - Trigger renegotations if needed
+
+
+4. Refection Module:
+   - After each session , analyze:
+        what worked ?
+        What dint ?
+
+    - Update preferences 
+
+
+
+
+Negotiation protocol :  
+Scenario : Student struggling with current pace ?
+
+1. DETECT STRUGGLE (Student Agent)
+    - Trigger: 3 failed attempts on practice problesm
+    - Action: Initiate negotation with SME
+
+2. PROPSE (Student Agent --> SME Agent)
+    Message : {
+        type: "PACE_ADJUSTMENT",
+        current_pace: "moderate:,
+        propsed_pace: "slow",
+        reason: "Student dailed 3/3 pratice problems",
+        student_profle : {}
+    }
+
+3. EVALUATE (SME Agent)
+  - Check : Can we slow down withotu viloating curriculm timeline ?
+  - Constaints : Must vover 20 topics by semseter end
+  - Current: Week 5 of 16 convered 7 topics (on track)
+  - Decistion: Can afford to slow down
+
+4. COUNTEROFFER (SME Agent --> Student Agent):
+    Message: {
+        type: "COUNTEROFFER",
+        proposed_pace: "slow",
+        adjustments: [
+            "Add 2 more visual example per concept",
+            "Introduce more practive questions (Easier --> hard)",
+            "Daily recap videos (5mins)
+        ],
+        trade_off: "Will reduce breadth, focus on depth",
+        "estimated_imapct: "+3 weeks to complete unit"
+    }
+
+5. ACCEPT (Student Agent -> SME Agent)
+    Message: {
+        type: "ACCEPT",
+        agreed_adjustment: [
+            "Add 2 more visual example per concept",
+            "Introduce more practive questions (Easier --> hard)",
+        ],
+        commitment: "Student will complete daily pracitce"
+        next_review: "1 week"
+    }
+
+6. COMMIT and Monitor (Both Agent)
+    - SME: Update content delivery plan
+    - Stident Agent: track outcomes
+    - Trigger re-negotation if no improvement in 1 week.
+
+
+
+Agent Communication patterns:
+1. Request response (sync) --> Student and SME
+2. Pub sub (async fashio) --> assesment aget: publish :quiz complete vent ---> student agent consumers events updated profiler --> SME agent --> adjusts the difficuly
+3. orchestrator workflow : Coordinates multiple worklsow 
+
+
+
+How will u scale to 10M students ??
+1. Will deploy on K8 with HPA 
+2. Lightweight persistent agent
+    Router complex queries to on demand agent
+    cache recent interactions
+    Always running 
+    Full state in DB 
+3. On demand LLM agent
+    Complex negotaion is requeired
+    refeecltion at the end
+    load state from db on spawn
+    terminate after 10 min idle
+    spawnned only when neede
+
+
+    Tier1 agent cost
+    Tier2 agent cost
+    LLM API calls : caching, batching
+    Vector db queries : 
+    MQ
+    Storage
+    Montioring and logging
+
+
+    Geographic Distribution
+    Datacentre multiple renegotations
+    200 student agents in US_EAST
+
+
+    Databse ? How do u share ?? replicas is one way, sharding
+
+    sharding key : student_id % 1000 shards
+
+   Shard1           shard2          shard3
+   Students         Students        Students
+   1                    2               3
+
+
+
+   Tradeoffs ?
+   1. One agent per subject per student (10M  * 10 100M ) vs one agent per student (10M) ?
+   2. State mangement : In memory vs database ?
+   3. Every call going to LLM vs tiered approach (cache  + vector db + llm)
+
+
+
+   Failure1 : Student Agetn Given bad advice 
+   Failure2: SME agent provides culturally insensitive contexnt ? 
+
+   Failure 3 : Negotition deadlock 
+
+   Monitoring. ??
+
+   . Lantecy : p90, p50, p99
+   Error rates : 4xx, 5xx
+   agent health : 
+   Negotiation metrics:
+   Cost
+   Learning outcomes
+
+   alertsp95 latrency > 1s --> alert
+   Error rate > 1%
+   Negotatyion success rate < 80% 
+   cost. per student. > 10$ a month escalate
+
+
