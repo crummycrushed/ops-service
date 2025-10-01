@@ -1,0 +1,101 @@
+
+
+CAP :  Consitency, Availability and Partition Tolerance
+
+For a ditributed system, you can achieve only 2 out of 3 properties at a time .
+
+C : every read gets the mose recernt write (no stale data)
+A  : every request receives a response (even if its not the latest data)
+P : The sysmte continues to operate even if network links break into disjin Partition
+
+Partition Tolerance will always happen and you can choose either C or A. 
+
+---------------------------------
+K8cluster ---> 
+Node groups  : group of similar kind of nodes
+  NG1:    Node1, Node2
+  NG2:    Node3, Node4
+
+All communication happens over a network : network can fail 
+
+
+Suppose a network partition happens : the cluster splits into 2 groups that can't talk with each other 
+
+Now image a client tries to dump some data --> some write call is happening -->. it can happens
+only one parition and another clien tries to read from the other parition
+
+
+To keep consistency: the system must refuse to answer the read ( because it cannt gurantter the latest value)
+ -> this violates Availability
+
+
+To keep availability , the system must return some value even though it may be stale
+ --> this violates consistency
+
+
+
+
+
+
+--------------------------------------------------------------------
+
+Design a distributed agent system for content moderation across a social media platform 
+serving 3 billion users. Specialized agents detect diff harmful content types (
+    misinformation, hate speech, spam, etc
+). When agents disagreee implement a democratic consensus and appeal system where agents can 
+challenge and overrule decisions
+
+
+Functional Requirement:
+1. Multi Content detections
+    hate speech and harassment
+    misinformation and fake news
+    span and scams
+    Adult content
+    Violence 
+    Copyright violation
+
+2. consensus and Appeals:
+    Democratic voting when agents disagree
+    multi level appeal system (agent --> supervisor --> human)
+    Explain decistion with Evidence
+
+3. Real time processing
+    Prirotisation for viral content
+    Live stream Montioring
+    scan results for general content
+4. Feedback loops 
+
+
+
+Non functional requirement:
+1. Scalibility 
+2. latency
+3. Accuracy
+4. Availability
+5. Compliance and Audit (last 90 days )
+
+
+
+
+
+1. False positive surge (over removal of content)
+
+   Monitorin: False positive rate > 5% threshold
+   user repor: spike in appeals  > 3x normal
+   Automated quality : Random sampling shows high rate
+
+
+   1. Circut breaker activation
+        pause automated removals for affected content type
+        route all decision to human moderators
+
+
+    2. Rollback recent decisiont
+            Query last 1 hr of decitsion by affected agents
+
+    3. Agent isolation:
+        figure out which agents are causing this issues
+        disable that 
+        route it to backup agent
+
